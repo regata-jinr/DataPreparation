@@ -1,7 +1,7 @@
 ﻿
 namespace DataPreporation
 {
-    class TrainModel
+   public class TrainModel
     {
         public int FileName { get; set; }
         public string Ethalon { get; set; }
