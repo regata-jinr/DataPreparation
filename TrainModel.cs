@@ -1,8 +1,13 @@
-﻿
-namespace DataPreporation
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace DataPreparation
 {
-   public class TrainModel
+    [Table("TrainData")]
+    public class TrainModel
     {
+        [Key]
+        public int    Id   { get; set; }
         public int    FileName   { get; set; }
         public string Ethalon    { get; set; }
         public double PeakEnergy { get; set; }
@@ -11,7 +16,7 @@ namespace DataPreporation
 
         public override string ToString()
         {
-            return $"{FileName}-{Ethalon}-{PeakEnergy}-{Output}-{Nuclid}";
+            return $"{FileName};{Ethalon};{PeakEnergy};{Output};{Nuclid}";
         }
 
     }

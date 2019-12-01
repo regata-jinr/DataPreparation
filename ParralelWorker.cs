@@ -6,14 +6,13 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Diagnostics;
-//using Renci.SshNet;
-using System.Data.SqlClient;
+//using System.Data.SqlClient;
 
-namespace WorkFlow
+namespace DataPreparation
 {
     static partial class Worker
     {
-        public static void Parse()
+        public static void ParseParallel()
         {
             var sw = new Stopwatch();
             sw.Start();
