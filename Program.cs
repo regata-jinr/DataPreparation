@@ -1,6 +1,8 @@
 ﻿using System.IO;
+using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Diagnostics;
@@ -28,29 +30,25 @@ namespace DataPreparation
                 }
 
             Console.WriteLine($"Start parsing files in directory - '{args[0]}'");
-            foreach (var file in Directory.GetFiles(args[0], "*.rpt"))
-            {
-                Worker.Parse(file);
 
-                if (Worker.dataList.Any())
+            Parallel.ForEach(Directory.GetFiles(args[0], "*.rpt"), (file => Worker.Parse(file)));
+
+            if (Worker.trainModels.Any())
+            {
+                using (var uc = new TrainContext())
                 {
-                        //Worker.dataList.ForEach(d => Console.WriteLine(d));
-                        using (var uc = new TrainContext())
-                        {
-                            try
-                            {
-                                uc.TrainData.AddRange(Worker.dataList);
-                                uc.SaveChanges();
-                            }
-                            catch (DbUpdateException db)
-                            {
-                                Console.WriteLine($"Error occured during saving data from the file '{file}' to DB:");
-                                Console.WriteLine(db.Message);
-                                Console.WriteLine(db.InnerException.Message);
-                            }
-                        }
+                    try
+                    {
+                        uc.TrainData.AddRange(Worker.trainModels);
+                        uc.SaveChanges();
+                    }
+                    catch (DbUpdateException db)
+                    {
+                        Console.WriteLine($"Error occured during saving data to DB:");
+                        Console.WriteLine(db.Message);
+                        Console.WriteLine(db.InnerException.Message);
+                    }
                 }
-                Worker.dataList.Clear();
             }
 
             sw.Stop();
@@ -61,18 +59,19 @@ namespace DataPreparation
     public static partial class Worker
     {
 
-        static Regex elemPattern         = new Regex(@"[A-Z]{1,2}-\d{2,3}[m]{0,1}");
-        static Regex energyPattern       = new Regex(@"\d{2,4}.\d{2}");
-        static Regex energyOutputPattern = new Regex(@"\d{1,3}.\d{2}");
-        static Regex fileIDPattern       = new Regex(@"\d{7}");
-        static Regex datePattern         = new Regex(@"\d{2}.\d{2}.\d{2}");
+        static readonly Regex elemPattern         = new Regex(@"[A-Z]{1,2}-\d{2,3}[m]{0,1}");
+        static readonly Regex energyPattern       = new Regex(@"\d{2,4}.\d{2}");
+        static readonly Regex energyOutputPattern = new Regex(@"\d{1,3}.\d{2}");
+        static readonly Regex fileIDPattern       = new Regex(@"\d{7}");
+        static readonly Regex datePattern         = new Regex(@"\d{2}.\d{2}.\d{2}");
 
-        public static List<TrainModel> dataList = new List<TrainModel>();
+        public static ConcurrentBag<TrainModel> trainModels = new ConcurrentBag<TrainModel>();
 
-        public static void Parse(string file)
+        public static async Task Parse(string file)
         {
             try
             {
+                var dataList = new List<TrainModel>();
                 string rLine;
                 string ethalon = "";
                 bool startEnergyArea = false;
@@ -142,10 +141,14 @@ namespace DataPreparation
                         }
                     }
                 } // files loop
+
+                dataList.AsParallel().ForAll(t => trainModels.Add(t));
+                dataList.Clear();
+              
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Error occured during parsing the file '{file}'");
+                Console.WriteLine($"Error occurred during parsing the file '{file}'");
                 Console.WriteLine(e.Message);
             }
         } 
